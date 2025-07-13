@@ -84,7 +84,7 @@ def main():
     messages = get_today_emails(service)
     total, transactions = extract_debit_amounts(service, messages)
 
-    print(f"\n📅 TOTAL SPENT TODAY: ₹{total:.2f}\n")
+    print(f"\n📅 Total spent today: ₹{total:.2f}\n")
     for amt, detail in transactions:
         print(f"→ ₹{amt:.2f} | {detail}...")
 
