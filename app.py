@@ -20,7 +20,7 @@ st.markdown("""
             border-radius: 15px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
             margin-bottom: 20px;
-            color: #000000 !important;
+            color: #111111 !important;
         }
         .transaction-card {
             background-color: #111111;
