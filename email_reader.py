@@ -1,5 +1,4 @@
 import datetime
-import base64
 import re
 import streamlit as st
 from google.oauth2.credentials import Credentials
@@ -13,11 +12,11 @@ def authenticate_gmail():
     Authenticate using credentials from Streamlit secrets.toml.
     """
     creds = Credentials(
-        token=st.secrets["token"],
-        refresh_token=st.secrets["refresh_token"],
-        token_uri=st.secrets["token_uri"],
-        client_id=st.secrets["client_id"],
-        client_secret=st.secrets["client_secret"],
+        token=st.secrets["token"]["token"],
+        refresh_token=st.secrets["token"]["refresh_token"],
+        token_uri=st.secrets["token"]["token_uri"],
+        client_id=st.secrets["token"]["client_id"],
+        client_secret=st.secrets["token"]["client_secret"],
         scopes=SCOPES
     )
     return creds
@@ -62,7 +61,7 @@ def extract_debit_amounts(service, messages):
                     amount = float(match.group(1).replace(',', ''))
                     total_spent += amount
                     transaction_list.append((amount, snippet[:80]))
-        except Exception as e:
+        except Exception:
             continue
 
     return total_spent, transaction_list
