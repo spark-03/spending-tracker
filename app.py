@@ -3,36 +3,79 @@ from email_reader import authenticate_gmail, get_today_emails, extract_debit_amo
 from googleapiclient.discovery import build
 import time
 
-st.set_page_config(page_title="Spending Tracker", layout="centered")
+# Page config
+st.set_page_config(page_title="Spending Tracker 💳", layout="centered")
 
-st.title("📬 Email-Based Spending Tracker")
-st.write("Tracks how much you've spent *today* based on Gmail debit messages.")
+# Custom styling
+st.markdown("""
+    <style>
+        .stApp {
+            background-color: #f5f7fa;
+            font-family: 'Segoe UI', sans-serif;
+        }
+        .metric-container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .transaction-card {
+            background-color: #ffffff;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            border-left: 6px solid #2c91e9;
+            border-radius: 0.5rem;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+    </style>
+""", unsafe_allow_html=True)
 
-# Manual refresh button
+# App title
+st.title("📬 Gmail Spending Tracker")
+st.caption("Tracks today's spending based on your debit messages in Gmail.")
+
+# Session state init
+if "total" not in st.session_state:
+    st.session_state.total = 0.0
+    st.session_state.transactions = []
+    st.session_state.last_updated = "--"
+
+# Refresh button
 if st.button("🔄 Refresh Now"):
-    creds = authenticate_gmail()
-    service = build('gmail', 'v1', credentials=creds)
-    messages = get_today_emails(service)
-    total, transactions = extract_debit_amounts(service, messages)
-    st.session_state['total'] = total
-    st.session_state['transactions'] = transactions
-    st.session_state['last_updated'] = time.strftime("%H:%M:%S")
+    try:
+        with st.spinner("🔐 Authenticating..."):
+            creds = authenticate_gmail()
+            service = build('gmail', 'v1', credentials=creds)
 
-# Initialize state
-if 'total' not in st.session_state:
-    st.session_state['total'] = 0.0
-    st.session_state['transactions'] = []
-    st.session_state['last_updated'] = "--"
+        with st.spinner("📬 Reading emails..."):
+            messages = get_today_emails(service)
+            total, transactions = extract_debit_amounts(service, messages)
 
-# Display results
-st.markdown("### 💰 Total Spent Today:")
-st.metric(label="", value=f"₹ {st.session_state['total']:.2f}")
+        st.session_state.total = total
+        st.session_state.transactions = transactions
+        st.session_state.last_updated = time.strftime("%H:%M:%S")
+        st.success("✅ Refreshed successfully!")
 
-st.markdown("### 📋 Transactions Today:")
-if st.session_state['transactions']:
-    for amt, detail in st.session_state['transactions']:
-        st.write(f"₹{amt:.2f} — {detail}...")
+    except Exception as e:
+        st.error(f"❌ Error: {e}")
+
+# Metric display
+st.markdown('<div class="metric-container">', unsafe_allow_html=True)
+st.subheader("💰 Total Spent Today")
+st.metric(label="", value=f"₹ {st.session_state.total:.2f}")
+st.caption(f"Last updated at {st.session_state.last_updated}")
+st.markdown('</div>', unsafe_allow_html=True)
+
+# Transactions
+st.subheader("🧾 Today's Transactions")
+if st.session_state.transactions:
+    for amt, desc in st.session_state.transactions:
+        st.markdown(f"""
+            <div class="transaction-card">
+                <b>₹{amt:.2f}</b><br>
+                <small>{desc}...</small>
+            </div>
+        """, unsafe_allow_html=True)
 else:
-    st.info("No debit transactions found today.")
-
-st.caption(f"Last updated at {st.session_state['last_updated']} | Click refresh to update.")
+    st.info("🎉 No spending found today!")
