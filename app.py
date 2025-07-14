@@ -23,7 +23,7 @@ st.markdown("""
             color: #000000 !important;
         }
         .transaction-card {
-            background-color: #ffffff;
+            background-color: #111111;
             padding: 1rem;
             margin-bottom: 0.75rem;
             border-left: 6px solid #2c91e9;
