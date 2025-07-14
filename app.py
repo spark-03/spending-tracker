@@ -32,7 +32,7 @@ st.markdown("""
             color: #000000 !important;
         }
         h1, h2, h3, h4, h5, h6, .css-10trblm, .css-1d391kg {
-            color: #000000 !important;
+            color: #111111 !important;
         }
     </style>
 """, unsafe_allow_html=True)
