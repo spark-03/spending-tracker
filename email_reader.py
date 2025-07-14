@@ -2,6 +2,7 @@ import datetime
 import re
 import streamlit as st
 from google.oauth2.credentials import Credentials
+from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 
 # Gmail API scope
@@ -10,6 +11,7 @@ SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
 def authenticate_gmail():
     """
     Authenticate using credentials from Streamlit secrets.toml.
+    Handles token refresh if expired.
     """
     creds = Credentials(
         token=st.secrets["token"]["token"],
@@ -19,11 +21,15 @@ def authenticate_gmail():
         client_secret=st.secrets["token"]["client_secret"],
         scopes=SCOPES
     )
+
+    if creds.expired and creds.refresh_token:
+        creds.refresh(Request())
+
     return creds
 
 def get_today_emails(service):
     """
-    Fetches emails from today using Gmail API.
+    Fetches today's emails from Gmail using UTC.
     """
     today = datetime.datetime.utcnow().date()
     query = f'after:{today.strftime("%Y/%m/%d")}'
@@ -32,7 +38,9 @@ def get_today_emails(service):
 
     while True:
         response = service.users().messages().list(
-            userId='me', q=query, pageToken=next_page_token
+            userId='me',
+            q=query,
+            pageToken=next_page_token
         ).execute()
 
         messages.extend(response.get('messages', []))
@@ -44,8 +52,8 @@ def get_today_emails(service):
 
 def extract_debit_amounts(service, messages):
     """
-    Extracts all ₹ (rupee) amounts from Gmail snippets that mention spending keywords.
-    Returns total spending and a list of (amount, description).
+    Extracts debit/expense amounts from relevant emails.
+    Returns total and list of (amount, short description).
     """
     total_spent = 0.0
     transaction_list = []
@@ -55,13 +63,38 @@ def extract_debit_amounts(service, messages):
             msg_data = service.users().messages().get(userId='me', id=msg['id']).execute()
             snippet = msg_data.get('snippet', '')
 
-            if any(keyword in snippet.lower() for keyword in ['debited', 'spent', 'purchase', 'payment']):
-                match = re.search(r'(?:₹|INR|Rs\.?)\s?([\d,]+(?:\.\d{1,2})?)', snippet)
+            if any(keyword in snippet.lower() for keyword in ['debited', 'spent', 'purchase', 'payment', 'charged']):
+                match = re.search(r'(?:₹|INR|Rs\.?)\s*([\d,]+(?:\.\d{1,2})?)', snippet)
                 if match:
                     amount = float(match.group(1).replace(',', ''))
                     total_spent += amount
-                    transaction_list.append((amount, snippet[:80]))
-        except Exception:
+                    transaction_list.append((amount, snippet[:100]))  # Show first 100 chars
+        except Exception as e:
+            # Optionally log or print error
             continue
 
     return total_spent, transaction_list
+
+# ---------- Streamlit UI ----------
+
+st.title("📩 Gmail Expense Tracker")
+st.write("This app fetches today's expenses from your Gmail inbox using Gmail API.")
+
+try:
+    creds = authenticate_gmail()
+    service = build('gmail', 'v1', credentials=creds)
+
+    messages = get_today_emails(service)
+    total_spent, transactions = extract_debit_amounts(service, messages)
+
+    st.subheader(f"Total Spent Today: ₹{total_spent:,.2f}")
+
+    if transactions:
+        st.subheader("🧾 Transactions Found:")
+        for amount, description in transactions:
+            st.write(f"**₹{amount:,.2f}** – {description}")
+    else:
+        st.info("No debit transactions found for today.")
+
+except Exception as e:
+    st.error(f"❌ Error: {e}")
