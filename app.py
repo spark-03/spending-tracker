@@ -12,7 +12,7 @@ st.markdown("""
         .stApp {
             background-color: #f5f7fa;
             font-family: 'Segoe UI', sans-serif;
-            color: #000000 !important; /* Set default font to black */
+            color: #111111 !important; /* Set default font to black */
         }
         .metric-container {
             background-color: white;
