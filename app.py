@@ -6,12 +6,13 @@ import time
 # Page config
 st.set_page_config(page_title="Spending Tracker 💳", layout="centered")
 
-# Custom styling
+# Custom styling with black font
 st.markdown("""
     <style>
         .stApp {
             background-color: #f5f7fa;
             font-family: 'Segoe UI', sans-serif;
+            color: #000000 !important; /* Set default font to black */
         }
         .metric-container {
             background-color: white;
@@ -19,6 +20,7 @@ st.markdown("""
             border-radius: 15px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
             margin-bottom: 20px;
+            color: #000000 !important;
         }
         .transaction-card {
             background-color: #ffffff;
@@ -27,6 +29,10 @@ st.markdown("""
             border-left: 6px solid #2c91e9;
             border-radius: 0.5rem;
             box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            color: #000000 !important;
+        }
+        h1, h2, h3, h4, h5, h6, .css-10trblm, .css-1d391kg {
+            color: #000000 !important;
         }
     </style>
 """, unsafe_allow_html=True)
