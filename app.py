@@ -1,4 +1,10 @@
 import streamlit as st
+try:
+    from email_reader import get_today_spending
+except Exception as e:
+    st.error("Failed to import email_reader.py")
+    st.exception(e)
+
 from email_reader import get_today_spending
 
 st.set_page_config(page_title="Today's Spend", page_icon="💸")
