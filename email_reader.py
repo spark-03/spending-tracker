@@ -1,100 +1,86 @@
-import datetime
+import base64
 import re
-import streamlit as st
-from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
+
+import streamlit as st
+from datetime import datetime
+from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 
-# Gmail API scope
 SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
 
-def authenticate_gmail():
-    """
-    Authenticate using credentials from Streamlit secrets.toml.
-    Handles token refresh if expired.
-    """
+def get_credentials_from_secrets():
+    secrets = st.secrets["google"]
+
     creds = Credentials(
-        token=st.secrets["token"]["token"],
-        refresh_token=st.secrets["token"]["refresh_token"],
-        token_uri=st.secrets["token"]["token_uri"],
-        client_id=st.secrets["token"]["client_id"],
-        client_secret=st.secrets["token"]["client_secret"],
-        scopes=SCOPES
+        token=None,
+        refresh_token=secrets["refresh_token"],
+        token_uri=secrets["token_uri"],
+        client_id=secrets["client_id"],
+        client_secret=secrets["client_secret"],
+        scopes=['https://www.googleapis.com/auth/gmail.readonly']
     )
 
-    if creds.expired and creds.refresh_token:
-        creds.refresh(Request())
-
+    creds.refresh(Request())
     return creds
 
-def get_today_emails(service):
-    """
-    Fetches today's emails from Gmail using UTC.
-    """
-    today = datetime.datetime.utcnow().date()
-    query = f'after:{today.strftime("%Y/%m/%d")}'
-    messages = []
-    next_page_token = None
+def extract_amount(text):
+    match = re.search(r'(?:INR|₹|Rs\.?)\s?(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?)', text, re.IGNORECASE)
+    if match:
+        return float(match.group(1).replace(',', ''))
+    return None
 
-    while True:
-        response = service.users().messages().list(
-            userId='me',
-            q=query,
-            pageToken=next_page_token
-        ).execute()
+def extract_purpose(text):
+    match = re.search(r'(paid to|payment to|sent to|debited for|for|towards|UPI.*?@.*?|POS/[\w\s]+).{0,40}', text, re.IGNORECASE)
+    if match:
+        return match.group().strip()
+    return "Unknown"
 
-        messages.extend(response.get('messages', []))
-        next_page_token = response.get('nextPageToken')
-        if not next_page_token:
-            break
-
-    return messages
-
-def extract_debit_amounts(service, messages):
-    """
-    Extracts debit/expense amounts from relevant emails.
-    Returns total and list of (amount, short description).
-    """
-    total_spent = 0.0
-    transaction_list = []
-
-    for msg in messages:
-        try:
-            msg_data = service.users().messages().get(userId='me', id=msg['id']).execute()
-            snippet = msg_data.get('snippet', '')
-
-            if any(keyword in snippet.lower() for keyword in ['debited', 'spent', 'purchase', 'payment', 'charged']):
-                match = re.search(r'(?:₹|INR|Rs\.?)\s*([\d,]+(?:\.\d{1,2})?)', snippet)
-                if match:
-                    amount = float(match.group(1).replace(',', ''))
-                    total_spent += amount
-                    transaction_list.append((amount, snippet[:100]))  # Show first 100 chars
-        except Exception as e:
-            # Optionally log or print error
-            continue
-
-    return total_spent, transaction_list
-
-# ---------- Streamlit UI ----------
-
-st.title("📩 Gmail Expense Tracker")
-st.write("This app fetches today's expenses from your Gmail inbox using Gmail API.")
-
-try:
-    creds = authenticate_gmail()
+def get_today_spending():
+    creds = get_credentials_from_secrets()
     service = build('gmail', 'v1', credentials=creds)
 
-    messages = get_today_emails(service)
-    total_spent, transactions = extract_debit_amounts(service, messages)
+    today = datetime.now().date()
+    query = "subject:debited newer_than:1d"
 
-    st.subheader(f"Total Spent Today: ₹{total_spent:,.2f}")
+    result = service.users().messages().list(userId='me', q=query).execute()
+    messages = result.get('messages', [])
 
-    if transactions:
-        st.subheader("🧾 Transactions Found:")
-        for amount, description in transactions:
-            st.write(f"**₹{amount:,.2f}** – {description}")
-    else:
-        st.info("No debit transactions found for today.")
+    transactions = []
 
-except Exception as e:
-    st.error(f"❌ Error: {e}")
+    for msg in messages:
+        msg_data = service.users().messages().get(userId='me', id=msg['id'], format='full').execute()
+
+        headers = msg_data['payload']['headers']
+        date_str = next((h['value'] for h in headers if h['name'] == 'Date'), None)
+        subject = next((h['value'] for h in headers if h['name'] == 'Subject'), "No Subject")
+
+        try:
+            msg_time = datetime.strptime(date_str[:25], '%a, %d %b %Y %H:%M:%S')
+        except Exception:
+            continue
+
+        if msg_time.date() != today:
+            continue
+
+        payload = msg_data['payload']
+        text = ''
+        if 'parts' in payload:
+            for part in payload['parts']:
+                if part['mimeType'] == 'text/plain' and 'data' in part['body']:
+                    text = base64.urlsafe_b64decode(part['body']['data']).decode('utf-8', errors='ignore')
+                    break
+        elif 'body' in payload and 'data' in payload['body']:
+            text = base64.urlsafe_b64decode(payload['body']['data']).decode('utf-8', errors='ignore')
+
+        amt = extract_amount(text)
+        if amt:
+            purpose = extract_purpose(text)
+            transactions.append({
+                'time': msg_time.strftime("%H:%M"),
+                'amount': amt,
+                'purpose': purpose,
+                'subject': subject
+            })
+
+    return transactions
