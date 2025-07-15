@@ -25,9 +25,14 @@ def get_credentials_from_secrets():
     return creds
 
 def extract_amount(text):
-    match = re.search(r'(?:INR|₹|Rs\.?)\s?(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?)', text, re.IGNORECASE)
+    # Match INR, Rs, ₹ followed by numbers (with optional commas and decimals)
+    match = re.search(r'(?:INR|₹|Rs\.?)\s?([\d,]+(?:\.\d{1,2})?)', text, re.IGNORECASE)
     if match:
-        return float(match.group(1).replace(',', ''))
+        try:
+            amount_str = match.group(1).replace(',', '')
+            return float(amount_str)
+        except:
+            return None
     return None
 
 def extract_purpose(text):
