@@ -6,6 +6,7 @@ from datetime import datetime, time
 import pytz
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
+from email.utils import parsedate_to_datetime  # ✅ Robust date parser
 
 SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
 
@@ -44,13 +45,13 @@ def get_today_spending():
     creds = get_credentials_from_secrets()
     service = build('gmail', 'v1', credentials=creds)
 
-    # Get today's midnight IST in UTC
+    # Set IST midnight and convert to UTC for Gmail query
     ist = pytz.timezone("Asia/Kolkata")
     midnight_ist = ist.localize(datetime.combine(datetime.now(ist).date(), time.min))
     midnight_utc = midnight_ist.astimezone(pytz.utc)
     after_unix = int(midnight_utc.timestamp())
 
-    # Use 'after:' query with UNIX timestamp (UTC based)
+    # Gmail API query: only emails after IST midnight
     query = f"subject:debited after:{after_unix}"
     result = service.users().messages().list(userId='me', q=query).execute()
     messages = result.get('messages', [])
@@ -64,10 +65,10 @@ def get_today_spending():
         date_str = next((h['value'] for h in headers if h['name'] == 'Date'), None)
         subject = next((h['value'] for h in headers if h['name'] == 'Subject'), "No Subject")
 
+        # ✅ Parse any email date format with timezone
         try:
-            msg_time_utc = datetime.strptime(date_str[:25], '%a, %d %b %Y %H:%M:%S')
-            msg_time_utc = msg_time_utc.replace(tzinfo=pytz.utc)
-            msg_time_ist = msg_time_utc.astimezone(ist)
+            msg_time_raw = parsedate_to_datetime(date_str)
+            msg_time_ist = msg_time_raw.astimezone(ist)
         except Exception:
             continue
 
@@ -85,7 +86,7 @@ def get_today_spending():
         if amt:
             purpose = extract_purpose(text)
             transactions.append({
-                'time': msg_time_ist.strftime("%H:%M"),
+                'time': msg_time_ist.strftime("%H:%M"),  # ✅ Correct IST time
                 'amount': amt,
                 'purpose': purpose,
                 'subject': subject
