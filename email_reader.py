@@ -2,7 +2,7 @@ import base64
 import re
 from google.auth.transport.requests import Request
 import streamlit as st
-from datetime import datetime
+from datetime import datetime, time
 import pytz
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
@@ -18,14 +18,13 @@ def get_credentials_from_secrets():
         token_uri=secrets["token_uri"],
         client_id=secrets["client_id"],
         client_secret=secrets["client_secret"],
-        scopes=['https://www.googleapis.com/auth/gmail.readonly']
+        scopes=SCOPES
     )
 
     creds.refresh(Request())
     return creds
 
 def extract_amount(text):
-    # Match INR, Rs, ₹ followed by numbers (with optional commas and decimals)
     match = re.search(r'(?:INR|₹|Rs\.?)\s?([\d,]+(?:\.\d{1,2})?)', text, re.IGNORECASE)
     if match:
         try:
@@ -45,11 +44,14 @@ def get_today_spending():
     creds = get_credentials_from_secrets()
     service = build('gmail', 'v1', credentials=creds)
 
-    # Set IST timezone
+    # Get today's midnight IST in UTC
     ist = pytz.timezone("Asia/Kolkata")
-    today_ist = datetime.now(ist).date()
+    midnight_ist = ist.localize(datetime.combine(datetime.now(ist).date(), time.min))
+    midnight_utc = midnight_ist.astimezone(pytz.utc)
+    after_unix = int(midnight_utc.timestamp())
 
-    query = "subject:debited newer_than:1d"
+    # Use 'after:' query with UNIX timestamp (UTC based)
+    query = f"subject:debited after:{after_unix}"
     result = service.users().messages().list(userId='me', q=query).execute()
     messages = result.get('messages', [])
 
@@ -63,14 +65,10 @@ def get_today_spending():
         subject = next((h['value'] for h in headers if h['name'] == 'Subject'), "No Subject")
 
         try:
-            # Parse email time from UTC (most emails are in GMT)
             msg_time_utc = datetime.strptime(date_str[:25], '%a, %d %b %Y %H:%M:%S')
             msg_time_utc = msg_time_utc.replace(tzinfo=pytz.utc)
             msg_time_ist = msg_time_utc.astimezone(ist)
         except Exception:
-            continue
-
-        if msg_time_ist.date() != today_ist:
             continue
 
         payload = msg_data['payload']
