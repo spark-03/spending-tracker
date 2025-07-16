@@ -1,9 +1,9 @@
 import base64
 import re
 from google.auth.transport.requests import Request
-
 import streamlit as st
 from datetime import datetime
+import pytz
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 
@@ -45,9 +45,11 @@ def get_today_spending():
     creds = get_credentials_from_secrets()
     service = build('gmail', 'v1', credentials=creds)
 
-    today = datetime.now().date()
-    query = "subject:debited newer_than:1d"
+    # Set IST timezone
+    ist = pytz.timezone("Asia/Kolkata")
+    today_ist = datetime.now(ist).date()
 
+    query = "subject:debited newer_than:1d"
     result = service.users().messages().list(userId='me', q=query).execute()
     messages = result.get('messages', [])
 
@@ -61,11 +63,14 @@ def get_today_spending():
         subject = next((h['value'] for h in headers if h['name'] == 'Subject'), "No Subject")
 
         try:
-            msg_time = datetime.strptime(date_str[:25], '%a, %d %b %Y %H:%M:%S')
+            # Parse email time from UTC (most emails are in GMT)
+            msg_time_utc = datetime.strptime(date_str[:25], '%a, %d %b %Y %H:%M:%S')
+            msg_time_utc = msg_time_utc.replace(tzinfo=pytz.utc)
+            msg_time_ist = msg_time_utc.astimezone(ist)
         except Exception:
             continue
 
-        if msg_time.date() != today:
+        if msg_time_ist.date() != today_ist:
             continue
 
         payload = msg_data['payload']
@@ -82,7 +87,7 @@ def get_today_spending():
         if amt:
             purpose = extract_purpose(text)
             transactions.append({
-                'time': msg_time.strftime("%H:%M"),
+                'time': msg_time_ist.strftime("%H:%M"),
                 'amount': amt,
                 'purpose': purpose,
                 'subject': subject
