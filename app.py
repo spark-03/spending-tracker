@@ -8,7 +8,7 @@ except Exception as e:
 from email_reader import get_today_spending
 
 st.set_page_config(page_title="Today's Spend", page_icon="💸")
-st.title("💳 Today's Debit Summary")
+st.title("💳 💰Today's Debit Summary")
 
 with st.spinner("Fetching today's debit messages..."):
     data = get_today_spending()
