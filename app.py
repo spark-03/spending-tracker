@@ -15,7 +15,7 @@ st.set_page_config(page_title="Today's Spend", page_icon="💸", layout="centere
 
 # Title with emoji and style
 st.markdown("""
-    <h1 style='text-align: center; color: #4CAF50; font_size=28'>
+    <h1 style='text-align: center; color: #4CAF50; font_size=24'>
         💳 Today's Debit Summary
     </h1>
 """, unsafe_allow_html=True)
