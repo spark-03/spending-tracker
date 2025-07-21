@@ -21,7 +21,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Optional animation (confetti when app loads)
-rain(emoji="💸", font_size=32, falling_speed=5, animation_length="short")
+rain(emoji="💸", font_size=28, falling_speed=5, animation_length="short")
 
 with st.spinner("🔍 Fetching today's debit messages..."):
     data = get_today_spending()
