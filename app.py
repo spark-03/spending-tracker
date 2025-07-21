@@ -34,7 +34,7 @@ else:
     # Stylish metric
     st.markdown("### 💰 Summary")
     st.metric(label="Total Debited Today", value=f"₹{total:,.2f}", delta=None)
-    style_metric_cards(background_color="#f0f2f6", border_color="#4CAF50", border_left_color="#4CAF50", box_shadow=True)
+    style_metric_cards(background_color="111111", border_color="#4CAF50", border_left_color="#4CAF50", box_shadow=True)
 
     st.markdown("---")
 
@@ -59,4 +59,4 @@ else:
 
 # Footer or credit
 st.markdown("---")
-st.markdown("<div style='text-align:center; color: gray;'>Built with ❤️ using Streamlit</div>", unsafe_allow_html=True)
+st.markdown("<div style='text-align:center; color: black;'>Built with ❤️ using Streamlit</div>", unsafe_allow_html=True)
