@@ -4,7 +4,6 @@ from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 
 # Constants
-CLIENT_SECRET_FILE = "credentials/client_secret.json"
 SCOPES = ["openid", "email", "profile"]
 
 def login():
@@ -19,13 +18,23 @@ def login():
         user_info = service.userinfo().get().execute()
         return user_info.get("email")
 
-    # Handle redirect URI
+    # Extract client config from secrets.toml
+    client_config = {
+        "web": {
+            "client_id": st.secrets["google"]["client_id"],
+            "client_secret": st.secrets["google"]["client_secret"],
+            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+            "token_uri": "https://oauth2.googleapis.com/token",
+            "redirect_uris": [st.secrets["google"]["redirect_uri"]],
+        }
+    }
+
     redirect_uri = st.secrets["google"]["redirect_uri"]
 
     # First-time auth: generate URL
     if "auth_url" not in st.session_state:
-        flow = Flow.from_client_secrets_file(
-            CLIENT_SECRET_FILE,
+        flow = Flow.from_client_config(
+            client_config=client_config,
             scopes=SCOPES,
             redirect_uri=redirect_uri,
         )
