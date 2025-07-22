@@ -1,34 +1,54 @@
-# auth/login.py
-
 import streamlit as st
 import os
-import streamlit_authenticator as stauth
-from dotenv import load_dotenv
+import json
+from google_auth_oauthlib.flow import Flow
+from google.oauth2.credentials import Credentials
+from googleapiclient.discovery import build
 
-# Load environment variables (optional)
-load_dotenv()
-
-# Replace with your own hashed password(s)
-hashed_passwords = stauth.Hasher(["your_plain_password"]).generate()
-
-# Example: one user only
-authenticator = stauth.Authenticate(
-    names=["Demo User"],
-    usernames=["demo_user"],
-    passwords=hashed_passwords,
-    cookie_name="spending_tracker_login",
-    key="auth",
-    cookie_expiry_days=30
-)
+# Path to your client_secret.json
+CLIENT_SECRET_FILE = "credentials/client_secret.json"
+SCOPES = ["https://www.googleapis.com/auth/gmail.readonly", "openid", "email", "profile"]
 
 def login():
-    name, auth_status, username = authenticator.login("Login", "main")
+    if "credentials" not in st.session_state:
+        st.session_state.credentials = None
 
-    if auth_status is False:
-        st.error("Username/password is incorrect")
-    elif auth_status is None:
-        st.warning("Please enter your username and password")
-    elif auth_status:
-        st.success(f"Welcome, {name} 👋")
-        return True  # Logged in successfully
-    return False  # Not logged in yet
+    if st.session_state.credentials:
+        creds = Credentials.from_authorized_user_info(st.session_state.credentials, SCOPES)
+        service = build("oauth2", "v2", credentials=creds)
+        user_info = service.userinfo().get().execute()
+        return user_info.get("email")
+
+    # Start OAuth flow
+    if "auth_url" not in st.session_state:
+        flow = Flow.from_client_secrets_file(
+            CLIENT_SECRET_FILE,
+            scopes=SCOPES,
+            redirect_uri="http://localhost:8501"
+        )
+        auth_url, _ = flow.authorization_url(prompt='consent')
+        st.session_state.flow = flow
+        st.session_state.auth_url = auth_url
+        st.info("Please sign in with your Google Account:")
+        st.markdown(f"[Click here to login]({auth_url})")
+        return None
+
+    # Once redirected back, extract credentials from URL params
+    if "code" in st.experimental_get_query_params():
+        code = st.experimental_get_query_params()["code"][0]
+        flow = st.session_state.flow
+        flow.fetch_token(code=code)
+        creds = flow.credentials
+        st.session_state.credentials = {
+            "token": creds.token,
+            "refresh_token": creds.refresh_token,
+            "token_uri": creds.token_uri,
+            "client_id": creds.client_id,
+            "client_secret": creds.client_secret,
+            "scopes": creds.scopes
+        }
+        service = build("oauth2", "v2", credentials=creds)
+        user_info = service.userinfo().get().execute()
+        return user_info.get("email")
+
+    return None
