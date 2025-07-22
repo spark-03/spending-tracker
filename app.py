@@ -4,7 +4,7 @@ from streamlit_extras.stylable_container import stylable_container
 from streamlit_extras.let_it_rain import rain
 from streamlit_extras.metric_cards import style_metric_cards
 
-from auth import login
+from auth.login import login
 
 if not login():
     st.stop()  # Stops execution until logged in
