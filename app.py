@@ -6,6 +6,12 @@ from streamlit_extras.metric_cards import style_metric_cards
 
 from auth.login import login
 
+user_email = login()
+if not user_email:
+    st.stop()
+
+st.success(f"Welcome, {user_email} 👋")
+# Show your dashboard or analytics after this
 if not login():
     st.stop()  # Stops execution until logged in
 try:
