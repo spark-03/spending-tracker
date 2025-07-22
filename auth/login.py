@@ -20,7 +20,7 @@ def login():
         return user_info.get("email")
 
     # Handle redirect URI
-    redirect_uri = st.secrets["redirect_uri"]
+    redirect_uri = st.google.secrets["redirect_uri"]
 
     # First-time auth: generate URL
     if "auth_url" not in st.session_state:
