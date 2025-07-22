@@ -4,6 +4,10 @@ from streamlit_extras.stylable_container import stylable_container
 from streamlit_extras.let_it_rain import rain
 from streamlit_extras.metric_cards import style_metric_cards
 
+from auth import login
+
+if not login():
+    st.stop()  # Stops execution until logged in
 try:
     from email_reader import get_today_spending
 except Exception as e:
