@@ -29,7 +29,7 @@ def login():
             "web": {
                 "client_id": st.secrets["google"]["client_id"],
                 "client_secret": st.secrets["google"]["client_secret"],
-                "redirect_uris": [st.secrets["google"]["redirect_uri"]],
+                "redirect_uris": [redirect_uri],
                 "auth_uri": "https://accounts.google.com/o/oauth2/auth",
                 "token_uri": st.secrets["google"]["token_uri"]
             }
@@ -48,8 +48,8 @@ def login():
         st.markdown(f"[Click here to login]({auth_url})")
         return None
 
-    # Handle return from Google with auth code
-    query_params = st.query_params()
+    # ✅ FIX: Use the correct method to get query params
+    query_params = st.experimental_get_query_params()
     if "code" in query_params:
         code = query_params["code"][0]
         flow = st.session_state.flow
