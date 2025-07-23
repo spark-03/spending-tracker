@@ -5,7 +5,12 @@ from googleapiclient.discovery import build
 import json
 
 # Constants
-SCOPES = ["openid", "email", "profile"]
+SCOPES = [
+    "openid",
+    "email",
+    "profile",
+    "https://www.googleapis.com/auth/gmail.readonly"
+]
 
 def login():
     # Initialize session state
