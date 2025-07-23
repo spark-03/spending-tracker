@@ -6,49 +6,50 @@ from streamlit_extras.metric_cards import style_metric_cards
 
 from auth.login import login
 
+# --- Auth ---
 user_email = login()
 if not user_email:
     st.stop()
 
+# --- Page config ---
+st.set_page_config(page_title="Today's Spend", page_icon="💸", layout="centered")
 st.success(f"Welcome, {user_email} 👋")
-# Show your dashboard or analytics after this
-if not login():
-    st.stop()  # Stops execution until logged in
+
+# --- Imports ---
 try:
     from email_reader import get_today_spending
 except Exception as e:
     st.error("❌ Failed to import `email_reader.py`")
     st.exception(e)
+    st.stop()
 
-# Set page config
-st.set_page_config(page_title="Today's Spend", page_icon="💸", layout="centered")
-
-# Title with emoji and style
+# --- UI Header ---
 st.markdown("""
-    <h1 style='text-align: center; color: #4CAF50; font_size=24'>
+    <h1 style='text-align: center; color: #4CAF50; font-size: 28px'>
         💳 Today's Debit Summary
     </h1>
 """, unsafe_allow_html=True)
 
-# Optional animation (confetti when app loads)
+# --- Optional Animation ---
 rain(emoji="💸", font_size=28, falling_speed=5, animation_length="short")
 
+# --- Fetch Data ---
 with st.spinner("🔍 Fetching today's debit messages..."):
     data = get_today_spending()
 
+# --- Display Data ---
 if not data:
     st.warning("🚫 No debit transactions found today.")
 else:
     total = sum(d['amount'] for d in data)
 
-    # Stylish metric
     st.markdown("### 💰 Summary")
-    st.metric(label="Total Debited Today", value=f"₹{total:,.2f}", delta=None)
+    st.metric(label="Total Debited Today", value=f"₹{total:,.2f}")
     style_metric_cards(background_color="111111", border_color="#4CAF50", border_left_color="#4CAF50", box_shadow=True)
 
     st.markdown("---")
-
     st.markdown("### 📋 Transaction Details")
+
     for txn in data:
         with stylable_container(
             key=f"txn_{txn['time']}",
@@ -67,6 +68,6 @@ else:
             st.markdown(f"**🔸 Purpose:** {txn['purpose']}")
             st.caption(f"📩 {txn['subject']}")
 
-# Footer or credit
+# --- Footer ---
 st.markdown("---")
 st.markdown("<div style='text-align:center; color: black;'>Built with ❤️ using Streamlit</div>", unsafe_allow_html=True)
