@@ -1,6 +1,6 @@
 
 import streamlit as st
-from gmails.fetch_mails import fetch_debit_emails
+from gmails.fetch_mails import fetch_recent_messages
 import pandas as pd
 
 st.set_page_config(page_title="User Dashboard", layout="wide")
