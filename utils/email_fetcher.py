@@ -1,7 +1,7 @@
 import base64
 from googleapiclient.discovery import build
 from google.oauth2.credentials import Credentials
-from utils.parser import extract_debit_amounts
+from utils.email_fetcher import extract_debit_amounts
 
 
 def fetch_debit_emails(user_credentials: dict, max_results=50):
